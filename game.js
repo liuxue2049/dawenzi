@@ -16,7 +16,10 @@ const gameState = {
     powerTimer: null,
     healthTimer: null,
     energyTimer: null,
-    gameOverReason: null
+    gameOverReason: null,
+    activeReward: null,     // 当前激活的奖励 { type, params }
+    shieldActive: false,    // 防御罩是否激活
+    shieldPower: 0          // 防御罩减伤比例 (0-1)
 };
 
 // 图片预加载函数
@@ -67,11 +70,11 @@ function loadLevelImages(level) {
 
 // 精灵表动画配置
 const SPRITE_CONFIG = {
-    1: { file: 'wenzi1_spritesheet.png', fw: 216, fh: 216, cols: 8, total: 60, fps: 12 },
-    2: { file: 'wenzi2_spritesheet.png', fw: 216, fh: 216, cols: 8, total: 60, fps: 12 },
-    3: { file: 'wenzi3_spritesheet.png', fw: 216, fh: 384, cols: 8, total: 60, fps: 12 },
-    4: { file: 'wenzi4_spritesheet.png', fw: 216, fh: 384, cols: 8, total: 60, fps: 12 },
-    5: { file: 'wenzi5_spritesheet.png', fw: 216, fh: 384, cols: 8, total: 60, fps: 12 },
+    1: { file: 'wenzi1_spritesheet.png', fw: 64, fh: 64, cols: 8, total: 60, fps: 12 },
+    2: { file: 'wenzi2_spritesheet.png', fw: 64, fh: 64, cols: 8, total: 60, fps: 12 },
+    3: { file: 'wenzi3_spritesheet.png', fw: 64, fh: 114, cols: 8, total: 60, fps: 12 },
+    4: { file: 'wenzi4_spritesheet.png', fw: 64, fh: 114, cols: 8, total: 60, fps: 12 },
+    5: { file: 'wenzi5_spritesheet.png', fw: 64, fh: 114, cols: 8, total: 60, fps: 12 },
 };
 
 // 预加载精灵表
@@ -96,6 +99,53 @@ const mosquitoScores = {
     4: 10,
     5: 10
 };
+
+// 关卡奖励配置
+const REWARD_CONFIG = {
+    2:  { text: '追踪弹',         type: 'homing' },
+    3:  { text: '散弹 3 颗',      type: 'spread', count: 3, rows: 1 },
+    4:  { text: '散弹 5 颗',      type: 'spread', count: 5, rows: 1 },
+    5:  { text: '散弹 7 颗',      type: 'spread', count: 7, rows: 1 },
+    6:  { text: '自动防御罩',      type: 'shield', power: 0.3 },
+    7:  { text: '散弹双层 上5下3', type: 'spread', count: 5, rows: 2, row2Count: 3 },
+    8:  { text: '散弹双层 上7下5', type: 'spread', count: 7, rows: 2, row2Count: 5 },
+    9:  { text: '散弹三层 上7中5下3', type: 'spread', count: 7, rows: 3, row2Count: 5, row3Count: 3 },
+    10: { text: '防御罩 +50%',     type: 'shield', power: 0.5 },
+};
+
+function applyReward(level) {
+    if (level <= 1) return null;
+    if (level >= 11) {
+        // 11关及以上只有分数奖励
+        gameState.activeReward = null;
+        gameState.shieldActive = false;
+        gameState.shieldPower = 0;
+        return { text: `分数奖励 +${100 + level * 10}`, score: 100 + level * 10 };
+    }
+    const cfg = REWARD_CONFIG[level];
+    if (!cfg) return null;
+    const reward = { text: cfg.text, score: 50 + level * 10 };
+    if (cfg.type === 'spread') {
+        gameState.activeReward = {
+            type: 'spread',
+            count: cfg.count,
+            rows: cfg.rows || 1,
+            row2Count: cfg.row2Count || 0,
+            row3Count: cfg.row3Count || 0
+        };
+        gameState.shieldActive = false;
+        gameState.shieldPower = 0;
+    } else if (cfg.type === 'shield') {
+        gameState.activeReward = null;
+        gameState.shieldActive = true;
+        gameState.shieldPower = cfg.power;
+    } else if (cfg.type === 'homing') {
+        gameState.activeReward = { type: 'homing' };
+        gameState.shieldActive = false;
+        gameState.shieldPower = 0;
+    }
+    return reward;
+}
 
 // DOM 元素
 const powerFill = document.getElementById('powerFill');
@@ -150,6 +200,7 @@ function startEnergyCharging() {
 
 // 激活激光瞄准线
 function activateLaser() {
+    return; // 激光已禁用
     // 如果激光已经激活，不重复激活
     if (laserActive) {
         return;
@@ -1030,8 +1081,9 @@ function mosquitoAttack(attacker) {
             clearInterval(flyInterval);
             bullet.remove();
             
-            // 扣除玩家血量（根据蚊子的攻击伤害）
-            const damage = attacker.properties.attackDamage || 10;
+            // 扣除玩家血量（防御罩减伤）
+            const rawDamage = attacker.properties.attackDamage || 10;
+            const damage = gameState.shieldActive ? Math.round(rawDamage * (1 - gameState.shieldPower)) : rawDamage;
             gameState.playerHealth = Math.max(0, gameState.playerHealth - damage);
             updatePlayerHealth();
             
@@ -1784,49 +1836,58 @@ function resumeBGM() {
 
 // 创建炮弹
 function createBullet() {
+    const reward = gameState.activeReward;
+    if (reward && reward.type === 'spread') {
+        const rows = [];
+        rows.push({ count: reward.count, angleOff: 0 });
+        if (reward.rows >= 2) {
+            rows[0].angleOff = 4;
+            rows.push({ count: reward.row2Count, angleOff: -4 });
+        }
+        if (reward.rows >= 3) {
+            rows[0].angleOff = 6;
+            rows.push({ count: reward.row3Count, angleOff: -6 });
+            rows[1].angleOff = 0;
+        }
+        rows.forEach(row => {
+            const step = row.count > 1 ? 8 / (row.count - 1) : 0;
+            for (let i = 0; i < row.count; i++) {
+                const spreadAngle = (i - (row.count - 1) / 2) * step;
+                launchSingleBullet(gameState.cannonAngle + row.angleOff + spreadAngle);
+            }
+        });
+    } else {
+        launchSingleBullet(gameState.cannonAngle);
+    }
+}
+
+function launchSingleBullet(angleDeg) {
     const bullet = document.createElement('div');
     bullet.className = 'bullet';
     
-    // 获取游戏区域的位置和尺寸
     const gameAreaRect = gameArea.getBoundingClientRect();
-    
-    // 计算炮口位置（炮筒末端）
-    const angleRad = gameState.cannonAngle * Math.PI / 180;
+    const angleRad = angleDeg * Math.PI / 180;
     const cannonLength = cannonBarrel.offsetWidth;
     
-    // 炮筒旋转中心（根据CSS计算）
-    // left: 50%, margin-left: -5px
     const pivotX = gameAreaRect.width / 2 - 5;
-    // 炮筒在游戏区域下方，需要获取炮筒相对于游戏区域的实际位置
     const cannonRect = cannonBarrel.getBoundingClientRect();
-    // 炮筒旋转中心是CSS中的transform-origin: left center
-    // 也就是炮筒的左端中心点
     const pivotY = cannonRect.top + cannonRect.height / 2 - gameAreaRect.top;
     
-    // 炮口位置（右端点，根据角度计算）
     const startX = pivotX + Math.cos(angleRad) * cannonLength;
     const startY = pivotY + Math.sin(angleRad) * cannonLength;
     
-    console.log('pivotY:', pivotY, 'gameAreaRect.top:', gameAreaRect.top, 'gameAreaRect.height:', gameAreaRect.height);
-    console.log('cannonRect.top:', cannonRect.top, 'cannonRect.height:', cannonRect.height);
-    
-    // 设置炮弹初始位置（居中）
     bullet.style.left = (startX - 7.5) + 'px';
     bullet.style.top = (startY - 7.5) + 'px';
     
     gameArea.appendChild(bullet);
     
-    // 计算飞行方向
     const speed = 15;
     const vx = Math.cos(angleRad) * speed;
     const vy = Math.sin(angleRad) * speed;
     
-    // 炮弹飞行
     let bulletX = startX - 7.5;
     let bulletY = startY - 7.5;
     
-    // 创建SVG轨迹线
-    console.log('Creating trail line, start:', startX, startY);
     const trailLine = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
     trailLine.setAttribute('stroke', '#FF0000');
     trailLine.setAttribute('stroke-width', '5');
@@ -1836,7 +1897,6 @@ function createBullet() {
     const points = [`${startX},${startY}`];
     trailLine.setAttribute('points', points.join(' '));
     trailSvg.appendChild(trailLine);
-    console.log('Trail line added to SVG');
     
     const flyInterval = setInterval(() => {
         bulletX += vx;
@@ -1845,186 +1905,211 @@ function createBullet() {
         bullet.style.left = bulletX + 'px';
         bullet.style.top = bulletY + 'px';
         
-        // 添加轨迹点
         points.push(`${bulletX + 7.5},${bulletY + 7.5}`);
         trailLine.setAttribute('points', points.join(' '));
         
-        // 检测是否击中蚊子
         const bulletRect = bullet.getBoundingClientRect();
         let hit = false;
         let hitMosquito = null;
-        
-        // 收集所有被击中的蚊子
         const hitMosquitoes = [];
+        
         gameState.mosquitoes.forEach(m => {
             const mosquitoRect = m.element.getBoundingClientRect();
-            
-            // 简单的碰撞检测
             if (bulletRect.left < mosquitoRect.right &&
                 bulletRect.right > mosquitoRect.left &&
                 bulletRect.top < mosquitoRect.bottom &&
                 bulletRect.bottom > mosquitoRect.top) {
-                
                 hitMosquitoes.push(m);
             }
         });
         
-        // 如果击中多个蚊子，随机选择一个
         if (hitMosquitoes.length > 0) {
             hit = true;
             hitMosquito = hitMosquitoes[Math.floor(Math.random() * hitMosquitoes.length)];
-            
-            // 处理被击中的蚊子
             const m = hitMosquito;
             
-            // 检查是否是3号蚊子（有血条）
             if (m.properties.health) {
-                // 每次减少50点血量（打两下消失）
                 m.properties.currentHealth -= 50;
                 updateHealthBar(m);
-                
-                // 播放电击音效
                 pauseBGM();
                 zapperSound.currentTime = 0;
                 zapperSound.play();
                 zapperSound.onended = resumeBGM;
                 
-                // 检查是否死亡
                 if (m.properties.currentHealth <= 0) {
                     m.element.style.transform = 'scale(1.5)';
                     m.element.style.opacity = '0';
-                    // 添加分数
                     addScore(m.id);
                 } else {
-                    // 受伤动画
                     m.element.style.filter = 'brightness(2)';
-                    setTimeout(() => {
-                        m.element.style.filter = 'brightness(1)';
-                    }, 200);
+                    setTimeout(() => { m.element.style.filter = 'brightness(1)'; }, 200);
                 }
             } else {
-                // 普通蚊子直接消灭
                 m.element.style.transform = 'scale(1.5)';
                 m.element.style.opacity = '0';
-                // 添加分数
                 addScore(m.id);
-                
-                // 暂停背景音乐，播放电击音效
                 pauseBGM();
                 zapperSound.currentTime = 0;
                 zapperSound.play();
-                // 音效结束后恢复背景音乐
                 zapperSound.onended = resumeBGM;
             }
         }
         
-        // 如果击中蚊子，移除该蚊子
         if (hitMosquito) {
             setTimeout(() => {
-                // 只有血量为0或普通蚊子才移除
                 if (!hitMosquito.properties.health || hitMosquito.properties.currentHealth <= 0) {
                     hitMosquito.element.remove();
                     const index = gameState.mosquitoes.indexOf(hitMosquito);
-                    if (index > -1) {
-                        gameState.mosquitoes.splice(index, 1);
-                    }
+                    if (index > -1) gameState.mosquitoes.splice(index, 1);
                     updateRadarDots();
-                    
-                    // 检查是否所有蚊子都被消灭（只计算活着的蚊子）
                     const aliveMosquitoes = gameState.mosquitoes.filter(m => 
                         m.element.style.opacity !== '0' && m.element.parentNode
                     );
-                    if (aliveMosquitoes.length === 0) {
-                        showGameOver();
-                    }
+                    if (aliveMosquitoes.length === 0) showGameOver();
                 }
             }, 500);
             updateRadarDots();
         }
         
-        // 检测是否超出屏幕
         if (bulletX < -20 || bulletX > gameAreaRect.width + 20 ||
             bulletY < -20 || bulletY > gameAreaRect.height + 20 || hit) {
             clearInterval(flyInterval);
             bullet.remove();
-            
-            // 延迟清除轨迹
-            setTimeout(() => {
-                trailLine.remove();
-            }, 300);
+            setTimeout(() => { trailLine.remove(); }, 300);
         }
     }, 20);
 }
 
-// 显示游戏结束弹窗
+// 显示关卡结束界面
 function showGameOver(reason = 'win') {
-    // 防止重复调用
-    if (gameOverModal.style.display === 'flex') {
-        return;
-    }
-    
-    // 记录游戏结束原因
+    if (gameOverModal.style.display === 'flex') return;
     gameState.gameOverReason = reason;
     
-    gameOverModal.style.display = 'flex';
     // 停止背景音乐
     pauseBGM();
     bgmStarted = false;
-    // 清除音效结束回调，防止重新播放背景音乐
     zapperSound.onended = null;
     meizidanSound.onended = null;
-    // 保存最高分数
     saveHighScore();
     
-    // 根据游戏结束原因设置不同的提示信息
-    const gameOverText = document.querySelector('#gameOverModal .modal-content h2');
-    const gameOverMessage = document.querySelector('#gameOverModal .modal-content p');
-    const restartButton = document.querySelector('#gameOverModal .modal-content button');
-    
     if (reason === 'lose') {
-        // 血量为空的情况
+        // 失败：显示原弹窗
+        gameOverModal.style.display = 'flex';
+        const gameOverText = document.querySelector('#gameOverModal .modal-content h2');
+        const gameOverMessage = document.querySelector('#gameOverModal .modal-content p');
+        const restartButton = document.querySelector('#gameOverModal .modal-content button');
         if (gameOverText) gameOverText.textContent = '游戏结束';
         if (gameOverMessage) gameOverMessage.textContent = '是否重新再来？';
         if (restartButton) restartButton.textContent = '重新开始';
-    } else {
-        // 消灭所有蚊子的情况
-        if (gameOverText) gameOverText.textContent = '恭喜！全部消灭！';
-        if (gameOverMessage) gameOverMessage.textContent = '点击按钮进入下一关';
-        if (restartButton) restartButton.textContent = '进入下一关';
-    }
-    
-    // 重置游戏状态（除了最高分）
-    if (reason === 'lose') {
-        // 血量为空的情况，重置为第一轮
         gameState.level = 1;
         gameState.score = 0;
-        gameState.playerHealth = gameState.maxPlayerHealth; // 血条空了才补满
+        gameState.playerHealth = gameState.maxPlayerHealth;
+        gameState.activeReward = null;
+        gameState.shieldActive = false;
+        gameState.shieldPower = 0;
     } else {
-        // 消灭所有蚊子的情况，进入下一轮
+        // 胜利：显示水晶球
+        showCrystalBall();
         gameState.level += 1;
-        // 保留当前血量，不补满
     }
+    
     gameState.power = 50;
     gameState.cannonAngle = -90;
     updateScore();
     updatePlayerHealth();
     updatePowerBar();
-    if (cannonBarrel) {
-        cannonBarrel.style.transform = `rotate(${gameState.cannonAngle}deg)`;
-    }
+    if (cannonBarrel) cannonBarrel.style.transform = `rotate(${gameState.cannonAngle}deg)`;
     
-    // 预加载下一轮的图片（边玩边加载）
     if (reason !== 'lose') {
-        const nextLevel = gameState.level;
-        loadLevelImages(nextLevel).then(() => {
-            console.log('Preloaded images for level', nextLevel);
-        }).catch(error => {
-            console.warn('Error preloading images for next level:', error);
-        });
+        loadLevelImages(gameState.level).then(() => {
+            console.log('Preloaded images for level', gameState.level);
+        }).catch(err => console.warn('Preload error:', err));
     }
 }
 
-// 重新开始游戏
+// 水晶球奖励界面
+function showCrystalBall() {
+    const level = gameState.level;
+    const reward = applyReward(level);
+    
+    // 创建遮罩
+    const overlay = document.createElement('div');
+    overlay.className = 'crystal-overlay';
+    overlay.id = 'crystalOverlay';
+    
+    // 水晶球容器（从上方飘入）
+    const ball = document.createElement('div');
+    ball.className = 'crystal-ball';
+    ball.innerHTML = `
+        <div class="crystal-glow"></div>
+        <div class="crystal-inner">
+            <span class="crystal-text">点击领取</span>
+            <span class="crystal-level">第 ${level} 关奖励</span>
+        </div>
+    `;
+    overlay.appendChild(ball);
+    document.body.appendChild(overlay);
+    
+    // 点击水晶球显示奖励
+    ball.addEventListener('click', () => {
+        ball.classList.add('crystal-open');
+        const rewardText = reward ? reward.text : `分数奖励 +${100 + level * 10}`;
+        ball.innerHTML = `
+            <div class="crystal-glow"></div>
+            <div class="crystal-inner reward-shown">
+                <span class="crystal-reward-title">获得奖励</span>
+                <span class="crystal-reward-text">${rewardText}</span>
+                <span class="crystal-reward-score">+${reward ? reward.score : (100 + level * 10)} 分</span>
+                <span class="crystal-tap-hint">点击任意处继续</span>
+            </div>
+        `;
+        if (reward) gameState.score += reward.score;
+        else gameState.score += 100 + level * 10;
+        updateScore();
+        
+        // 点击任意处进入下一关
+        const goNext = () => {
+            overlay.remove();
+            document.removeEventListener('click', goNext);
+            document.removeEventListener('touchstart', goNext);
+            proceedToNextLevel();
+        };
+        setTimeout(() => {
+            document.addEventListener('click', goNext);
+            document.addEventListener('touchstart', goNext);
+        }, 300);
+    });
+}
+
+// 进入下一关
+function proceedToNextLevel() {
+    gameState.cannonAngle = -90;
+    gameState.power = 50;
+    gameState.energy = 100;
+    cannonBarrel.style.transform = `rotate(${gameState.cannonAngle}deg)`;
+    updatePowerBar();
+    updateEnergyBar();
+    updateLevel();
+    updateScore();
+    updatePlayerHealth();
+    
+    laserActive = false;
+    if (laserLine) laserLine = null;
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    lastTapTime = Date.now();
+    lastFireTime = Date.now();
+    
+    if (loadingModal) loadingModal.style.display = 'flex';
+    loadLevelImages(gameState.level).then(() => {
+        console.log('Images loaded for level', gameState.level);
+    }).catch(err => console.warn('Load error:', err)).finally(() => {
+        if (loadingModal) loadingModal.style.display = 'none';
+    });
+    
+    updateBackground();
+    while (trailSvg.firstChild) trailSvg.removeChild(trailSvg.firstChild);
+    showReadyModal();
+}
 async function restartGame() {
     gameOverModal.style.display = 'none';
     // 重置游戏状态（保持level不变，因为showGameOver已经设置了正确的level）
@@ -2256,6 +2341,7 @@ function markMosquito(mosquito) {
 // 创建追踪飞弹
 function createHomingMissile(target) {
     if (!target) return;
+    if (!gameState.activeReward || gameState.activeReward.type !== 'homing') return; // 需获得追踪弹奖励
     
     const cannonBase = document.querySelector('.cannon-base');
     const cannonRect = cannonBase.getBoundingClientRect();

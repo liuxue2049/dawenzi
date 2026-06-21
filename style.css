@@ -987,3 +987,128 @@ html, body {
     color: #4CAF50;
     margin: 0;
 }
+
+/* ===== 水晶球奖励界面 ===== */
+.crystal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden;
+}
+
+.crystal-ball {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, rgba(180,220,255,0.9), rgba(80,140,220,0.7) 50%, rgba(30,70,150,0.9));
+    box-shadow: 
+        0 0 40px rgba(100,180,255,0.6),
+        0 0 80px rgba(80,150,255,0.3),
+        inset 0 -10px 30px rgba(255,255,255,0.2),
+        inset 0 10px 20px rgba(255,255,255,0.1);
+    position: relative;
+    cursor: pointer;
+    animation: crystalFloatIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    margin-top: 30vh;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.crystal-ball:active {
+    transform: scale(0.95);
+}
+
+.crystal-ball.crystal-open {
+    animation: crystalPulse 0.5s ease-out;
+    width: 200px;
+    height: 200px;
+}
+
+@keyframes crystalFloatIn {
+    0% { transform: translateY(-120vh) scale(0.3); opacity: 0; }
+    60% { transform: translateY(10px) scale(1.05); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes crystalPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.crystal-glow {
+    position: absolute;
+    top: -10px; left: -10px; right: -10px; bottom: -10px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(180,220,255,0.4), transparent 70%);
+    animation: crystalGlow 2s ease-in-out infinite;
+}
+
+@keyframes crystalGlow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+.crystal-inner {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: 100%;
+}
+
+.crystal-text {
+    display: block;
+    color: #fff;
+    font-size: 22px;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(255,255,255,0.8), 0 2px 4px rgba(0,0,0,0.3);
+    letter-spacing: 2px;
+}
+
+.crystal-level {
+    display: block;
+    color: rgba(255,255,255,0.7);
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.reward-shown .crystal-reward-title {
+    display: block;
+    color: #FFD700;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(255,215,0,0.6);
+}
+
+.reward-shown .crystal-reward-text {
+    display: block;
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+    margin-top: 6px;
+    text-shadow: 0 0 12px rgba(255,255,255,0.7);
+}
+
+.reward-shown .crystal-reward-score {
+    display: block;
+    color: #4CAF50;
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.reward-shown .crystal-tap-hint {
+    display: block;
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+    margin-top: 8px;
+    animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+}
