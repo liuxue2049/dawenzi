@@ -1,14 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 4a940af194b4adc636ac135336aadc1c_03abdcb66d3211f18805525400d9a7a1
-    ReservedCode1: PU2psHOVj+cyxZGF5fgAKPB5fnaohNIFYy+JA9P5cGHX3/zpoZXXcysxbHNZGLwaAnKp/lR73ZiarbA/UFjxyTKj90u++TTgrMOA8u1gUJfpaeVvKctWDzT9rViuMRBGHv+HI0KxbkfXBbjJBlBy614eqf8Ps9gYRxsi0QzQ+ceIgvttzNNgOeJcF58=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 4a940af194b4adc636ac135336aadc1c_03abdcb66d3211f18805525400d9a7a1
-    ReservedCode2: PU2psHOVj+cyxZGF5fgAKPB5fnaohNIFYy+JA9P5cGHX3/zpoZXXcysxbHNZGLwaAnKp/lR73ZiarbA/UFjxyTKj90u++TTgrMOA8u1gUJfpaeVvKctWDzT9rViuMRBGHv+HI0KxbkfXBbjJBlBy614eqf8Ps9gYRxsi0QzQ+ceIgvttzNNgOeJcF58=
----
-
 # 打蚊子游戏 (Mosquito Swatter)
 
 基于纯 HTML/CSS/JS 的 H5 打蚊子游戏，支持触摸和鼠标操作。蚊子素材由视频经 AI 抠图自动生成精灵表动画。
@@ -63,4 +52,3 @@ dawenzi-3D/
 ## 许可
 
 [MIT](LICENSE)
-*（内容由AI生成，仅供参考）*
