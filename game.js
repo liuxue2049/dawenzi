@@ -1,4 +1,10 @@
 // 游戏状态
+// 游戏循环定时器引用（用于暂停/恢复）
+let mosquitoMoveInterval = null;
+let mosquitoHealInterval = null;
+let mosquitoAttackInterval = null;
+let mosquitoCloneTimeout = null;
+
 const gameState = {
     power: 50,
     maxPower: 50,
@@ -19,7 +25,9 @@ const gameState = {
     gameOverReason: null,
     activeReward: null,     // 当前激活的奖励 { type, params }
     shieldActive: false,    // 防御罩是否激活
-    shieldPower: 0          // 防御罩减伤比例 (0-1)
+    shieldPower: 0,         // 防御罩减伤比例 (0-1)
+    gamePaused: false,      // 游戏是否暂停（水晶球倒计时期间）
+    winProcessed: false     // 防重复胜利处理（多个子弹同时击杀最后蚊子）
 };
 
 // 图片预加载函数
@@ -176,6 +184,7 @@ function startPowerCharging() {
     }
     
     gameState.powerTimer = setInterval(() => {
+        if (gameState.gamePaused) return;
         if (gameState.power < gameState.maxPower) {
             const chargeAmount = gameState.maxPower * 0.05;
             gameState.power = Math.min(gameState.power + chargeAmount, gameState.maxPower);
@@ -191,6 +200,7 @@ function startEnergyCharging() {
     }
     
     gameState.energyTimer = setInterval(() => {
+        if (gameState.gamePaused) return;
         if (gameState.energy < gameState.maxEnergy) {
             gameState.energy = Math.min(gameState.energy + 2, gameState.maxEnergy);
             updateEnergyBar();
@@ -731,7 +741,8 @@ function updateRadarDots() {
 
 // 蚊子移动
 function startMosquitoMovement() {
-    setInterval(() => {
+    if (mosquitoMoveInterval) clearInterval(mosquitoMoveInterval);
+    mosquitoMoveInterval = setInterval(() => {
         gameState.mosquitoes.forEach(m => {
             // 跳过已消失的蚊子
             if (m.element.style.opacity === '0') return;
@@ -785,13 +796,14 @@ function startMosquitoMovement() {
 
 // 启动蚊子能力系统
 function startMosquitoAbilities() {
-    // 清除旧的回血定时器
-    if (gameState.healthTimer) {
-        clearInterval(gameState.healthTimer);
-    }
+    // 清除旧的定时器
+    if (gameState.healthTimer) clearInterval(gameState.healthTimer);
+    if (mosquitoCloneTimeout) { clearTimeout(mosquitoCloneTimeout); mosquitoCloneTimeout = null; }
+    if (mosquitoHealInterval) { clearInterval(mosquitoHealInterval); mosquitoHealInterval = null; }
+    if (mosquitoAttackInterval) { clearInterval(mosquitoAttackInterval); mosquitoAttackInterval = null; }
     
     // 2号蚊子：分身能力（出场5秒后分身一次）
-    setTimeout(() => {
+    mosquitoCloneTimeout = setTimeout(() => {
         gameState.mosquitoes.forEach(m => {
             // 检查是否是原始2号蚊子（有分身属性）且还未分身
             if (m.properties.clone && !m.properties.hasCloned && m.element.style.opacity !== '0') {
@@ -802,7 +814,7 @@ function startMosquitoAbilities() {
     }, 5000);
     
     // 4号蚊子：加血能力（每10秒检测并补满3号蚊子血量）
-    setInterval(() => {
+    mosquitoHealInterval = setInterval(() => {
         gameState.mosquitoes.forEach(m => {
             if (m.properties.heal && m.id === 4 && m.element.style.opacity !== '0') {
                 healMosquito(m);
@@ -811,7 +823,7 @@ function startMosquitoAbilities() {
     }, 10000);
     
     // 蚊子攻击能力（根据攻击间隔发射攻击子弹）
-    setInterval(() => {
+    mosquitoAttackInterval = setInterval(() => {
         const now = Date.now();
         gameState.mosquitoes.forEach(m => {
             if (m.properties.attack && m.element.style.opacity !== '0') {
@@ -830,6 +842,7 @@ function startMosquitoAbilities() {
     
     // 玩家血量自动回复（每秒回复2点）
     gameState.healthTimer = setInterval(() => {
+        if (gameState.gamePaused) return;
         if (gameState.playerHealth < gameState.maxPlayerHealth) {
             gameState.playerHealth = Math.min(gameState.playerHealth + 5, gameState.maxPlayerHealth);
             updatePlayerHealth();
@@ -1773,6 +1786,7 @@ function setActiveButton(color) {
 
 // 旋转炮口
 function rotateCannon(degrees) {
+    if (gameState.gamePaused) return;
     gameState.cannonAngle += degrees;
     
     // 限制角度范围：垂直方向(-90度)左右各60度
@@ -1797,6 +1811,7 @@ function vibrate(duration = 100) {
 
 // 发射
 function fire() {
+    if (gameState.gamePaused) return;
     // 发射时震动
     vibrate(150);
     
@@ -1983,7 +1998,10 @@ function launchSingleBullet(angleDeg) {
 // 显示关卡结束界面
 function showGameOver(reason = 'win') {
     if (gameOverModal.style.display === 'flex') return;
+    // 胜利路径防重复：多个子弹/导弹在500ms窗口内同时击杀最后蚊子会导致多次触发
+    if (reason !== 'lose' && gameState.winProcessed) return;
     gameState.gameOverReason = reason;
+    if (reason !== 'lose') gameState.winProcessed = true;
     
     // 停止背景音乐
     pauseBGM();
@@ -2027,6 +2045,29 @@ function showGameOver(reason = 'win') {
     }
 }
 
+// 停止所有游戏循环（水晶球倒计时期间暂停游戏）
+function stopAllGameLoops() {
+    gameState.gamePaused = true;
+    
+    if (mosquitoMoveInterval) { clearInterval(mosquitoMoveInterval); mosquitoMoveInterval = null; }
+    if (mosquitoHealInterval) { clearInterval(mosquitoHealInterval); mosquitoHealInterval = null; }
+    if (mosquitoAttackInterval) { clearInterval(mosquitoAttackInterval); mosquitoAttackInterval = null; }
+    if (mosquitoCloneTimeout) { clearTimeout(mosquitoCloneTimeout); mosquitoCloneTimeout = null; }
+    if (gameState.powerTimer) { clearInterval(gameState.powerTimer); gameState.powerTimer = null; }
+    if (gameState.healthTimer) { clearInterval(gameState.healthTimer); gameState.healthTimer = null; }
+    if (gameState.energyTimer) { clearInterval(gameState.energyTimer); gameState.energyTimer = null; }
+    
+    pauseBGM();
+    bgmStarted = false;
+    
+    // 清除场上所有蚊子
+    gameState.mosquitoes.forEach(m => {
+        if (m.element && m.element.parentNode) m.element.remove();
+    });
+    gameState.mosquitoes = [];
+    updateRadarDots();
+}
+
 // 水晶球奖励界面
 function showCrystalBall() {
     const level = gameState.level;
@@ -2054,6 +2095,9 @@ function showCrystalBall() {
     const claimReward = () => {
         overlay.removeEventListener('click', claimReward);
         overlay.removeEventListener('touchstart', claimReward);
+        
+        // 立即暂停游戏：停止所有循环、清除蚊子、停止BGM
+        stopAllGameLoops();
         
         ball.classList.add('crystal-open');
         const rewardText = reward ? reward.text : `分数奖励 +${100 + level * 10}`;
@@ -2091,6 +2135,7 @@ function showCrystalBall() {
 
 // 进入下一关
 function proceedToNextLevel() {
+    gameState.gamePaused = false;
     gameState.cannonAngle = -90;
     gameState.power = 50;
     gameState.energy = 100;
@@ -2124,6 +2169,7 @@ function proceedToNextLevel() {
 }
 async function restartGame() {
     gameOverModal.style.display = 'none';
+    gameState.winProcessed = false;
     // 重置游戏状态（保持level不变，因为showGameOver已经设置了正确的level）
     gameState.cannonAngle = -90;
     // 只有血条空了才补满血量，正常过关时保持当前血量
@@ -2180,6 +2226,7 @@ async function restartGame() {
     
     // 如果是过关（非失败），显示准备界面等待点击
     if (gameState.gameOverReason !== 'lose') {
+        gameState.gamePaused = false;
         spawnMosquitoes();
         startMosquitoMovement();
         startPowerCharging();
