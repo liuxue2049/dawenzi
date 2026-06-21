@@ -1,0 +1,989 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
+    font-family: Arial, sans-serif;
+}
+
+.game-container {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* 确保在移动设备上的兼容性 */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+}
+
+/* 移动设备优化 - 只针对触摸屏设备 */
+@media screen and (max-width: 768px) and (pointer: coarse) {
+    /* 顶部区域调整 */
+    .top-section {
+        padding: 8px;
+        gap: 10px;
+    }
+    
+    /* 游戏标题 */
+    .title-text {
+        font-size: 14px;
+    }
+    
+    /* 雷达大小调整 */
+    .radar {
+        width: 60px;
+        height: 60px;
+    }
+    
+    /* 顶部信息调整 */
+    .info-label {
+        font-size: 10px;
+        min-width: 28px;
+    }
+    
+    .level-value {
+        font-size: 14px;
+    }
+    
+    .score-value {
+        font-size: 12px;
+    }
+    
+    .high-score-value {
+        font-size: 11px;
+    }
+    
+    /* 玩家状态栏调整 */
+    .player-status {
+        gap: 4px;
+    }
+    
+    .status-label {
+        font-size: 9px;
+    }
+    
+    .player-health-bar,
+    .power-bar {
+        width: 90px;
+        height: 8px;
+    }
+    
+    /* 炮筒调整 */
+    .cannon-barrel {
+        width: 10.4vw;
+        max-width: 31px;
+        height: 16px;
+    }
+    
+    /* 按钮调整 */
+    .control-btn {
+        width: 60px;
+        height: 45px;
+        font-size: 16px;
+    }
+    
+    /* 箭头按钮调整 */
+    .arrow-btn {
+        width: 55px;
+        height: 50px;
+    }
+    
+    .arrow-btn.left::before {
+        border-width: 11px 15px 11px 0;
+        border-color: transparent #fff transparent transparent;
+    }
+    
+    .arrow-btn.right::before {
+        border-width: 11px 0 11px 15px;
+        border-color: transparent transparent transparent #fff;
+    }
+    
+    /* 蚊子大小调整 */
+    .mosquito {
+        width: 25px;
+        height: 25px;
+    }
+    
+    .mosquito-number {
+        font-size: 10px;
+    }
+    
+    /* 炮弹大小调整 */
+    .bullet {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+/* 针对v40等小屏幕设备的特殊处理 - 只针对移动设备 */
+@media screen and (max-width: 480px) and (pointer: coarse) {
+    .game-container {
+        height: auto !important;
+        min-height: calc(100vh - 120px);
+        padding-bottom: 120px;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    .top-section {
+        padding: 3px;
+        gap: 5px;
+        flex-shrink: 0;
+    }
+    
+    /* 游戏标题 */
+    .title-text {
+        font-size: 12px;
+    }
+    
+    .radar {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .info-label {
+        font-size: 9px;
+        min-width: 22px;
+    }
+    
+    .level-value {
+        font-size: 12px;
+    }
+    
+    .score-value {
+        font-size: 10px;
+    }
+    
+    .high-score-value {
+        font-size: 9px;
+    }
+    
+    .player-status {
+        gap: 3px;
+    }
+    
+    .status-label {
+        font-size: 8px;
+    }
+    
+    .player-health-bar,
+    .power-bar {
+        width: 70px;
+        height: 6px;
+    }
+    
+    .game-area {
+        flex: 1;
+        min-height: 120px;
+        overflow: hidden;
+    }
+    
+    .cannon-section {
+        height: 50px;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding-bottom: 5px;
+        z-index: 1000;
+    }
+    
+    .cannon-barrel {
+        height: 14px;
+        max-width: 23px;
+    }
+    
+    .controls {
+        display: none;
+    }
+    
+    .control-btn {
+        width: 50px;
+        height: 38px;
+        font-size: 13px;
+    }
+    
+    .arrow-btn {
+        width: 45px;
+        height: 38px;
+    }
+    
+    .arrow-btn.left::before {
+        border-width: 9px 12px 9px 0;
+        border-color: transparent #fff transparent transparent;
+    }
+    
+    .arrow-btn.right::before {
+        border-width: 9px 0 9px 12px;
+        border-color: transparent transparent transparent #fff;
+    }
+    
+    .arrow-btn.left {
+        margin-right: 35px;
+    }
+}
+
+/* 顶部区域 */
+.top-section {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    gap: 15px;
+}
+
+/* 游戏标题 */
+.game-title {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.title-text {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    white-space: nowrap;
+    text-align: center;
+    width: 100%;
+}
+
+/* 雷达 */
+.radar {
+    width: 80px;
+    height: 80px;
+    border: 2px solid #333;
+    border-radius: 50%;
+    position: relative;
+    flex-shrink: 0;
+    background: #f5f5f5;
+}
+
+.radar-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60%;
+    height: 60%;
+    border: 1px solid #999;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.radar-crosshair {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.radar-line {
+    position: absolute;
+    background: #999;
+}
+
+.radar-line.horizontal {
+    width: 100%;
+    height: 1px;
+    top: 50%;
+    left: 0;
+}
+
+.radar-line.vertical {
+    width: 1px;
+    height: 100%;
+    left: 50%;
+    top: 0;
+}
+
+.radar-dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: #f44336;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* 顶部信息区域 */
+.top-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.level-section,
+.score-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #666;
+    min-width: 35px;
+}
+
+.level-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2196F3;
+}
+
+.score-value {
+    font-size: 16px;
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+.score-separator {
+    color: #999;
+    font-size: 14px;
+}
+
+.high-score-value {
+    font-size: 14px;
+    color: #FF9800;
+}
+
+/* 说明书按钮 */
+.manual-btn {
+    margin-top: 8px;
+    padding: 6px 12px;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.manual-btn:hover {
+    background: #e0e0e0;
+    transform: scale(1.05);
+}
+
+/* 说明书弹窗 */
+.manual-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.manual-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.manual-modal .modal-content {
+    background: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80%;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.manual-modal.show .modal-content {
+    transform: scale(1);
+}
+
+.manual-modal .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #f5f5f5;
+    border-bottom: 1px solid #ddd;
+}
+
+.manual-modal .modal-header h2 {
+    font-size: 18px;
+    color: #333;
+    margin: 0;
+}
+
+.manual-modal .close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.manual-modal .close-btn:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.manual-modal .modal-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.manual-modal .modal-body h3 {
+    font-size: 16px;
+    margin: 15px 0 8px 0;
+    color: #333;
+}
+
+.manual-modal .modal-body ul,
+.manual-modal .modal-body ol {
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+.manual-modal .modal-body li {
+    margin-bottom: 5px;
+}
+
+.manual-modal .modal-body p {
+    margin-bottom: 15px;
+}
+
+/* 自定义滚动条 */
+.manual-modal .modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.manual-modal .modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.manual-modal .modal-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.manual-modal .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+    .manual-modal .modal-content {
+        width: 95%;
+        max-height: 85%;
+    }
+    
+    .manual-modal .modal-header {
+        padding: 10px 15px;
+    }
+    
+    .manual-modal .modal-header h2 {
+        font-size: 16px;
+    }
+    
+    .manual-modal .modal-body {
+        padding: 15px;
+        font-size: 13px;
+    }
+}
+
+/* 玩家状态栏 */
+.player-status {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+}
+
+.player-health-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.energy-section {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.power-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 2px;
+    flex-direction: column;
+}
+
+.power-bar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.missile-icon-wrapper {
+    display: flex;
+    align-items: center;
+    padding-left: 0;
+    width: 100%;
+    gap: 8px;
+    margin-left: 22px;
+}
+
+.status-label {
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+    color: #666;
+}
+
+.player-health-bar,
+.energy-bar,
+.power-bar {
+    width: 120px;
+    height: 10px;
+    border: 1px solid #333;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #e0e0e0;
+}
+
+.player-health-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #f44336, #ff5722);
+    transition: width 0.3s ease;
+}
+
+.energy-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #2196F3, #03A9F4);
+    transition: width 0.3s ease;
+}
+
+.missile-icon {
+    font-size: 16px;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+
+.missile-icon.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.power-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    transition: width 0.3s ease;
+}
+
+/* 游戏区域 */
+.game-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* 轨迹画布 */
+#trailCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* 蚊子 - 30px黑球 */
+.mosquito {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: #000;
+    border-radius: 50%;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* 1号蚊子只显示图片，不显示黑球背景 */
+.mosquito-image-only {
+    background: transparent;
+    height: auto !important;
+    overflow: visible;
+}
+
+/* 蚊子编号 */
+.mosquito-number {
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 1;
+}
+
+/* 蚊子图片 — 精灵表 canvas */
+.mosquito-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* 血条 */
+.health-bar {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 3px;
+    overflow: hidden;
+    z-index: 100;
+}
+
+.health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    transition: width 0.3s ease;
+}
+
+/* 炮弹 */
+.bullet {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    background: radial-gradient(circle, #FFD700, #FFA500);
+    border-radius: 50%;
+    box-shadow: 0 0 10px #FFD700, 0 0 20px #FFA500;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* 炮筒区域 */
+.cannon-section {
+    height: 60px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding-bottom: 10px;
+    z-index: 1000;
+}
+
+.cannon-base {
+    width: 140px;
+    height: 45px;
+    background: linear-gradient(135deg, #444 0%, #666 50%, #444 100%);
+    border: 2px solid #333;
+    border-radius: 15px 15px 5px 5px;
+    position: relative;
+    z-index: 10;
+    box-shadow: 
+        0 2px 4px rgba(0,0,0,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.1),
+        inset 0 -1px 0 rgba(0,0,0,0.3);
+}
+
+.cannon-barrel {
+    width: 62.5vw;
+    max-width: 140px;
+    height: 22px;
+    background: linear-gradient(90deg, #333 0%, #555 50%, #333 100%);
+    border: 1px solid #222;
+    position: absolute;
+    bottom: 15px;
+    transform-origin: left center;
+    transform: rotate(-90deg);
+    left: 50%;
+    margin-left: -5px;
+    border-radius: 0 8px 8px 0;
+    box-shadow: 
+        0 1px 3px rgba(0,0,0,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.cannon-muzzle {
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 32px;
+    background: linear-gradient(135deg, #222 0%, #444 50%, #222 100%);
+    border: 1px solid #111;
+    border-radius: 6px;
+    box-shadow: 
+        0 1px 3px rgba(0,0,0,0.4),
+        inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.cannon-balls {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    z-index: 20;
+}
+
+.ball {
+    width: 14px;
+    height: 14px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
+    border: 2px solid #FF8C00;
+    border-radius: 50%;
+    box-shadow: 
+        0 1px 2px rgba(0,0,0,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+/* 底部按钮 - 隐藏 */
+.controls {
+    display: none;
+}
+
+/* 移动设备控制台调整 */
+@media screen and (max-width: 768px) {
+    .controls {
+        height: 70px;
+        gap: 10px;
+        padding: 8px 12px 40px 12px;
+    }
+}
+
+.control-btn {
+    width: 70px;
+    height: 50px;
+    border: 3px solid #333;
+    border-radius: 25px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
+.control-btn.red {
+    background: #f44336;
+    color: white;
+}
+
+.control-btn.green {
+    background: #4CAF50;
+    color: white;
+}
+
+/* 按钮状态 */
+.control-btn.active {
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    transform: scale(1.1);
+}
+
+/* 箭头按钮容器 */
+.arrow-container {
+    display: flex;
+    align-items: center;
+    margin-right: auto;
+    margin-left: 0;
+}
+
+/* 箭头按钮 */
+.arrow-btn {
+    width: 60px;
+    height: 60px;
+    border: none;
+    background: #FFA500;
+    cursor: pointer;
+    position: relative;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.arrow-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+.arrow-btn.left::before {
+    border-width: 12px 16px 12px 0;
+    border-color: transparent #fff transparent transparent;
+    margin-left: -4px;
+}
+
+.arrow-btn.right::before {
+    border-width: 12px 0 12px 16px;
+    border-color: transparent transparent transparent #fff;
+    margin-left: 4px;
+}
+
+.arrow-btn.left {
+    margin-right: 50px;
+}
+
+.arrow-btn:active {
+    transform: scale(0.95);
+    background: #FF8C00;
+}
+
+/* 游戏结束弹窗 */
+.game-over-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    font-size: 32px;
+    color: #4CAF50;
+    margin-bottom: 20px;
+}
+
+.modal-content p {
+    font-size: 18px;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.restart-btn {
+    padding: 15px 40px;
+    font-size: 20px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.restart-btn:hover {
+    background: #45a049;
+    transform: scale(1.05);
+}
+
+/* 加载界面 */
+.loading-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-content {
+    text-align: center;
+    color: white;
+}
+
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #4CAF50;
+    animation: spin 1s ease-in-out infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 呼吸动画 */
+@keyframes breathing {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+}
+
+.loading-content p {
+    font-size: 20px;
+    color: #4CAF50;
+    margin: 0;
+}
