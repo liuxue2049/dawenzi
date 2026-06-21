@@ -2050,35 +2050,43 @@ function showCrystalBall() {
     overlay.appendChild(ball);
     document.body.appendChild(overlay);
     
-    // 点击水晶球显示奖励
-    ball.addEventListener('click', () => {
+    // 点击任意位置领取奖励并开始3秒倒计时
+    const claimReward = () => {
+        overlay.removeEventListener('click', claimReward);
+        overlay.removeEventListener('touchstart', claimReward);
+        
         ball.classList.add('crystal-open');
         const rewardText = reward ? reward.text : `分数奖励 +${100 + level * 10}`;
+        const rewardScore = reward ? reward.score : (100 + level * 10);
         ball.innerHTML = `
             <div class="crystal-glow"></div>
             <div class="crystal-inner reward-shown">
                 <span class="crystal-reward-title">获得奖励</span>
                 <span class="crystal-reward-text">${rewardText}</span>
-                <span class="crystal-reward-score">+${reward ? reward.score : (100 + level * 10)} 分</span>
-                <span class="crystal-tap-hint">点击任意处继续</span>
+                <span class="crystal-reward-score">+${rewardScore} 分</span>
+                <span class="crystal-countdown" id="crystalCountdown">3</span>
             </div>
         `;
-        if (reward) gameState.score += reward.score;
-        else gameState.score += 100 + level * 10;
+        gameState.score += rewardScore;
         updateScore();
         
-        // 点击任意处进入下一关
-        const goNext = () => {
-            overlay.remove();
-            document.removeEventListener('click', goNext);
-            document.removeEventListener('touchstart', goNext);
-            proceedToNextLevel();
-        };
-        setTimeout(() => {
-            document.addEventListener('click', goNext);
-            document.addEventListener('touchstart', goNext);
-        }, 300);
-    });
+        // 3秒倒计时，结束后自动进入下一关
+        let count = 3;
+        const countdownEl = document.getElementById('crystalCountdown');
+        const countdownInterval = setInterval(() => {
+            count--;
+            if (count <= 0) {
+                clearInterval(countdownInterval);
+                overlay.remove();
+                proceedToNextLevel();
+            } else {
+                countdownEl.textContent = count;
+            }
+        }, 1000);
+    };
+    
+    overlay.addEventListener('click', claimReward);
+    overlay.addEventListener('touchstart', claimReward);
 }
 
 // 进入下一关
@@ -2108,7 +2116,11 @@ function proceedToNextLevel() {
     
     updateBackground();
     while (trailSvg.firstChild) trailSvg.removeChild(trailSvg.firstChild);
-    showReadyModal();
+    spawnMosquitoes();
+    startMosquitoMovement();
+    startPowerCharging();
+    bgmStarted = true;
+    resumeBGM();
 }
 async function restartGame() {
     gameOverModal.style.display = 'none';
@@ -2168,7 +2180,11 @@ async function restartGame() {
     
     // 如果是过关（非失败），显示准备界面等待点击
     if (gameState.gameOverReason !== 'lose') {
-        showReadyModal();
+        spawnMosquitoes();
+        startMosquitoMovement();
+        startPowerCharging();
+        bgmStarted = true;
+        resumeBGM();
     } else {
         // 失败重开直接生成蚊子
         spawnMosquitoes();
